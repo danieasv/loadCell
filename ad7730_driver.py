@@ -4,16 +4,18 @@ import spidev
 import time
 from gpiozero import Button, LED
 
+
 #Rasberry Pi GPIO
 RESET = 26
 RDY = 24
 SS = 16
-DEBUG = 0
+
+DEBUG = 1
 
 
 READ_ONLY = 0xFF
 CR_SINGLE_WRITE = 0x00
-CR_SINGLE_READ = = 0x10
+CR_SINGLE_READ = 0x10
 CR_CONTINUOUS_READ_START = 0x20
 CR_CONTINUOUS_READ_STOP = 0x30
 
@@ -86,42 +88,47 @@ spi = spidev.SpiDev()
 spi.open(0, 0)
 spi.max_speed_hz = 1000000
 
+#GPIO.setmode(GPIO.BCM)
+#GPIO.setwarnings(False)
+
+#GPIO.setup(RESET, GPIO.OUT)
+
 reset = LED(RESET)
+#GPIO.setup(RDY, GPIO.IN, GPIO.PUD_UP)
 ready = Button(RDY)
 chipSelect = LED(SS)
 
 def waitForReady():
-	ready.wait_for_release()
-	if(DEBUG):
-		print(".")
-		time.sleep(0.1)
-	
+    while(ready.is_pressed != False):
+	    if(DEBUG):
+		    print('.')
+		    time.sleep(0.1)
 
 
 def restBoard():
 	reset.off()
-	time.sleep(0.2)
+	time.sleep(0.4)
 	reset.on()
-	time.sleep(0.2)
+	time.sleep(0.4)
 
 
 def sendByte(input):
 	if(DEBUG):
-		print("  ->  Transmitting 0x%s \n" %(input.encode('hex')))
+	    print("  ->  Transmitting {0} \n".format(hex(input)))
 	chipSelect.off()
 	spi.xfer([input])
 	chipSelect.on()
 	
 def send2Bytes(first,second):
 	if(DEBUG):
-		print("  ->  Transmitting 0x%s 0x%s \n" %(first.encode('hex')), %(second.encode('hex')))
+		print("  ->  Transmitting {0} {1} \n".format(hex(first),hex(second)))
 	chipSelect.off()
 	spi.xfer([first,second])
 	chipSelect.on()
 	
 def send3Bytes(first,second,third):
 	if(DEBUG):
-		print("  ->  Transmitting 0x%s 0x%s 0x%s \n" %(first.encode('hex')), %(second.encode('hex')), %(third.encode('hex')))
+		print("  ->  Transmitting {0} {1} {2}\n".format(hex(first),hex(second),hex(third)))
 	chipSelect.off()
 	spi.xfer([first,second,third])
 	chipSelect.on()
@@ -129,53 +136,119 @@ def send3Bytes(first,second,third):
 def readBytes(number):
 	chipSelect.off()
 	for i in range(number):
-		print("0x")
 		value = spi.xfer([READ_ONLY])
-		print(hex(value), "\n")
+		print("Reading: {0} \n".format(hex(value[0])))
 	chipSelect.on()
 
 
 def main():
     print("Starting...")
-	if(DEBUG):
-		print("Reseting AD7730 \n");
-	restBoard()
+    
+    if(DEBUG):
+	    print("Reseting AD7730 \n")
 	
-	if(DEBUG):
-		print("SETUP Register set to: \n")
-		sendByte(SETUP_REGISTER)
+    restBoard()
+
+    if(DEBUG):
+	    print("SETUP Register set to: \n")
+	    sendByte(SETUP_REGISTER)
+	    readBytes(1) #Read out status
+	    #spi.xfer([0x10])
+	    #read = spi.xfer([0xff])
+	    #print("Send 0x10, read:", hex(read[0]))
+	
+	
+  #-----------Filter Configuration-------------------------------  
+     if(DEBUG):
+		print("Filter Default")
+		sendByte(CR_SINGLE_READ | CR_FILTER_REGISTER)
+		readBytes(3)
+		print("Setting Up Filter")
+	  
+	  
+	  sendByte(CR_SINGLE_WRITE | CR_FILTER_REGISTER)
+	  send3Bytes(FR2_SINC_AVERAGING_2048, FR1_SKIP_OFF | FR1_FAST_OFF, FR0_CHOP_ON)
+	  
+	  
+	  if(DEBUG):
+		print("Filter set to ")
+		sendByte(CR_SINGLE_READ | CR_FILTER_REGISTER)
+		readBytes(3)
+		
+	  #--------------------------------------------------------------
+	  time.sleep(0.03)
+	  #----------------DAC Configuration-----------------------------
+	  if(DEBUG):
+		Serial.println("DAC Default")
+		sendByte(CR_SINGLE_READ | CR_DAC_REGISTER)
 		readBytes(1)
-	
-	if(DEBUG):
-		print("Start Continous Mode: \n")
+		Serial.println("Setting Up DAC")
+	  
+	  sendByte(CR_SINGLE_WRITE | CR_DAC_REGISTER)
+	  sendByte(DACR_OFFSET_SIGN_POSITIVE | DACR_OFFSET_NONE)
+	  
+	  if(DEBUG):
+		Serial.println("DAC set to ")
+		sendByte(CR_SINGLE_READ | CR_DAC_REGISTER)
+		readBytes(1)
+	  
+	  #--------------------------------------------------------------
+	  time.sleep(0.03);
+	  #---------Internal Zero Calibartion---------------------------- 
+	  if(DEBUG):
+		Serial.println("Starting Internal Zero Calibartion");
+	   
 		
-	sendByte(CR_SINGLE_WRITE | CR_MODE_REGISTER);
-	send2Bytes(MR1_MODE_CONTINUOUS | CURRENT_MODE_1_SETTINGS, CURRENT_MODE_0_SETTINGS);
-	waitForReady();	
+	  sendByte(CR_SINGLE_WRITE | CR_MODE_REGISTER)
+	  send2Bytes(MR1_MODE_INTERNAL_ZERO_CALIBRATION | CURRENT_MODE_1_SETTINGS, CURRENT_MODE_0_SETTINGS)
+
+	  waitForReady()
+
 	
-	if(DEBUG):
-		print("Continous Mode started \n")
 	
-	if(DEBUG):
-		print("Start continuos read \n")
 	
-	 sendByte(CR_CONTINUOUS_READ_START | CR_DATA_REGISTER);
+	#---------Internal Full Calibartion----------------------------  
+    if(DEBUG):
+        print("Starting Internal Full Calibartion"); 
+    
+    #sendByte(CR_SINGLE_WRITE | CR_MODE_REGISTER);
+    #send2Bytes(MR1_MODE_INTERNAL_FULL_CALIBRATION | CURRENT_MODE_1_SETTINGS, CURRENT_MODE_0_SETTINGS);
+    spi.xfer([0x20])
+    spi.xfer([0x20])
+    waitForReady();
+    print("ready")
 	
-	if(DEBUG):
-		print("Reading started \n")
+    if(DEBUG):
+	    print("Start Continous Mode: \n")
+		
+    sendByte(CR_SINGLE_WRITE | CR_MODE_REGISTER);
+    send2Bytes(MR1_MODE_CONTINUOUS | CURRENT_MODE_1_SETTINGS, CURRENT_MODE_0_SETTINGS);
+    waitForReady();	
+	
+    if(DEBUG):
+	    print("Continous Mode started \n")
+	
+    if(DEBUG):
+	    print("Start continuos read \n")
+	
+    sendByte(CR_CONTINUOUS_READ_START | CR_DATA_REGISTER);
+	
+    if(DEBUG):
+        print("Reading started \n")
 
 
-	while True:
-		waitForReady()
-		
-		chipSelect.off()
-		result1 = spi.xfer([0])
-		result2 = spi.xfer([0])
-		result3 = spi.xfer([0])
-		chipSelect.on()
-		
-		result = result3 + result2*256 + result1*256*256
-		print("%d \n", result)
+    while True:
+	    waitForReady()
+	    chipSelect.off()
+	    result1 = spi.xfer([0])
+	    result2 = spi.xfer([0])
+	    result3 = spi.xfer([0])
+	    chipSelect.on()
+	    #print("reslutat1", result1[0])
+	    result = result3[0] + (result2[0])*256 + (result1[0])*256*256
+	    #print("{0} {1} {2}".format(result1[0],result2[0],result3[0]))
+	    print("{0}".format(result))
+	    time.sleep(0.2)
 	
 if __name__ == '__main__':
     main()
