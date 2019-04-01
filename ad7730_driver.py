@@ -159,50 +159,48 @@ def main():
 	
 	
   #-----------Filter Configuration-------------------------------  
-     if(DEBUG):
-		print("Filter Default")
-		sendByte(CR_SINGLE_READ | CR_FILTER_REGISTER)
-		readBytes(3)
-		print("Setting Up Filter")
+    if(DEBUG):
+        print("Filter Default")
+        sendByte(CR_SINGLE_READ | CR_FILTER_REGISTER)
+        readBytes(3)
+        print("Setting Up Filter")
 	  
 	  
-	  sendByte(CR_SINGLE_WRITE | CR_FILTER_REGISTER)
-	  send3Bytes(FR2_SINC_AVERAGING_2048, FR1_SKIP_OFF | FR1_FAST_OFF, FR0_CHOP_ON)
+    sendByte(CR_SINGLE_WRITE | CR_FILTER_REGISTER)
+    send3Bytes(FR2_SINC_AVERAGING_2048, FR1_SKIP_OFF | FR1_FAST_OFF, FR0_CHOP_ON)
 	  
 	  
-	  if(DEBUG):
-		print("Filter set to ")
-		sendByte(CR_SINGLE_READ | CR_FILTER_REGISTER)
-		readBytes(3)
+    if(DEBUG):
+        print("Filter set to ")
+        sendByte(CR_SINGLE_READ | CR_FILTER_REGISTER)
+        readBytes(3)
 		
 	  #--------------------------------------------------------------
-	  time.sleep(0.03)
+    time.sleep(0.03)
 	  #----------------DAC Configuration-----------------------------
-	  if(DEBUG):
-		Serial.println("DAC Default")
-		sendByte(CR_SINGLE_READ | CR_DAC_REGISTER)
-		readBytes(1)
-		Serial.println("Setting Up DAC")
+    if(DEBUG):
+        print("DAC Default")
+        sendByte(CR_SINGLE_READ | CR_DAC_REGISTER)
+        readBytes(1)
+        print("Setting Up DAC")
 	  
-	  sendByte(CR_SINGLE_WRITE | CR_DAC_REGISTER)
-	  sendByte(DACR_OFFSET_SIGN_POSITIVE | DACR_OFFSET_NONE)
+    sendByte(CR_SINGLE_WRITE | CR_DAC_REGISTER)
+    sendByte(DACR_OFFSET_SIGN_POSITIVE | DACR_OFFSET_NONE)
 	  
-	  if(DEBUG):
-		Serial.println("DAC set to ")
-		sendByte(CR_SINGLE_READ | CR_DAC_REGISTER)
-		readBytes(1)
+    if(DEBUG):
+        print("DAC set to ")
+    sendByte(CR_SINGLE_READ | CR_DAC_REGISTER)
+    readBytes(1)
 	  
 	  #--------------------------------------------------------------
-	  time.sleep(0.03);
+    time.sleep(0.03)
 	  #---------Internal Zero Calibartion---------------------------- 
-	  if(DEBUG):
-		Serial.println("Starting Internal Zero Calibartion");
+    if(DEBUG):
+        print("Starting Internal Zero Calibartion")
 	   
-		
-	  sendByte(CR_SINGLE_WRITE | CR_MODE_REGISTER)
-	  send2Bytes(MR1_MODE_INTERNAL_ZERO_CALIBRATION | CURRENT_MODE_1_SETTINGS, CURRENT_MODE_0_SETTINGS)
-
-	  waitForReady()
+    sendByte(CR_SINGLE_WRITE | CR_MODE_REGISTER)
+    send2Bytes(MR1_MODE_INTERNAL_ZERO_CALIBRATION | CURRENT_MODE_1_SETTINGS, CURRENT_MODE_0_SETTINGS)
+    waitForReady()
 
 	
 	
@@ -215,7 +213,7 @@ def main():
     #send2Bytes(MR1_MODE_INTERNAL_FULL_CALIBRATION | CURRENT_MODE_1_SETTINGS, CURRENT_MODE_0_SETTINGS);
     spi.xfer([0x20])
     spi.xfer([0x20])
-    waitForReady();
+    waitForReady()
     print("ready")
 	
     if(DEBUG):
